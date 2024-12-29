@@ -8,12 +8,24 @@
 import SpriteKit
 import GameplayKit
 
-class GameScene: SKScene {
+class GameScene: SKScene, SKPhysicsContactDelegate {
+    
+    
+    
     // declare it up here to make it a global var
     let player = SKSpriteNode(imageNamed: "playerShip")
     // declare the sound gloablay to avoid lag
     let bulletSound = SKAction.playSoundFileNamed("laser-shot-ingame-230500", waitForCompletion: false)
+    // delare the sound globally to avoid lag
+    let explosionSound = SKAction.playSoundFileNamed("break-boom-fx-240235", waitForCompletion: false)
     
+    // structure for the different physics body
+    struct PhysicsCategories {
+        static let None: UInt32 = 0
+        static let Player: UInt32 = 0b1
+        static let Bullet: UInt32 = 0b10
+        static let Enemy : UInt32 = 0b100
+    }
     
     // utility functions
     // generate a random CGFloat between 0.0 and 1.0
@@ -49,6 +61,9 @@ class GameScene: SKScene {
     
     // runs as soon as the scene loads up
     override func didMove(to view: SKView) {
+        
+        self.physicsWorld.contactDelegate = self
+        
         // create background
         // create variable "background" which holds the node(image called background)
         let background = SKSpriteNode(imageNamed: "background")
@@ -74,10 +89,72 @@ class GameScene: SKScene {
         player.position = CGPoint(x: self.size.width/2, y: self.size.height * 0.2)
         // want this at 2 and not 1 because the bullet will be coming from under the spaceship
         player.zPosition = 2
+        player.physicsBody = SKPhysicsBody(rectangleOf: player.size)
+        // gravity wont effect the playership
+        player.physicsBody!.affectedByGravity = false
+        player.physicsBody!.categoryBitMask = PhysicsCategories.Player
+        player.physicsBody!.collisionBitMask = PhysicsCategories.None
+        player.physicsBody!.contactTestBitMask = PhysicsCategories.Enemy
         // make the player with all these attributes
         self.addChild(player)
 
     }
+    // function when two physic body make contact
+    func didBegin(_ contact: SKPhysicsContact) {
+        // variables needed to see how the contact between the bodies occurs
+        var body1 = SKPhysicsBody()
+        var body2 = SKPhysicsBody()
+        
+        if contact.bodyA.categoryBitMask < contact.bodyB.categoryBitMask {
+            body1 = contact.bodyA
+            body2 = contact.bodyB
+        } else {
+            body1 = contact.bodyB
+            body2 = contact.bodyA
+        }
+        
+        if body1.categoryBitMask == PhysicsCategories.Player && body2.categoryBitMask == PhysicsCategories.Enemy {
+            // if the player has hit the enemy
+            // delete player and enemey
+            // call the spawn explosion function
+            if body1.node != nil {
+                spawnExplosion(spawnPosition: body1.node!.position)
+            }
+            if body2.node != nil {
+                spawnExplosion(spawnPosition: body2.node!.position)
+            }
+            
+            body1.node?.removeFromParent()
+            body2.node?.removeFromParent()
+        }
+        if body2.categoryBitMask == PhysicsCategories.Bullet && body2.categoryBitMask == PhysicsCategories.Enemy && (body2.node?.position.y)! < self.size.height {
+            // if the bullet hit the enemy
+            // delete the bullet and enemy
+            // call the spawn explosion function and explode enemy ship
+            if body2.node != nil {
+                spawnExplosion(spawnPosition: body2.node!.position)
+            }
+            body1.node?.removeFromParent()
+            body2.node?.removeFromParent()
+            
+        }
+    }
+    
+    // function deals with the explosion
+    func spawnExplosion(spawnPosition: CGPoint) {
+        let explosion = SKSpriteNode(imageNamed: "explosion")
+        explosion.position = spawnPosition
+        explosion.zPosition = 3
+        explosion.setScale(0)
+        self.addChild(explosion)
+        // making the explosion look cooler
+        let scaleIn = SKAction.scale(to: 1, duration: 0.1)
+        let fadeOut = SKAction.fadeOut(withDuration: 0.1)
+        let delete = SKAction.removeFromParent()
+        let explosionSequence = SKAction.sequence([explosionSound, scaleIn, fadeOut, delete])
+        explosion.run(explosionSequence)
+    }
+    
     
     // function to spawn and fire a bullet
     func fireBullet() {
@@ -89,6 +166,11 @@ class GameScene: SKScene {
         bullet.position = player.position
         // make the bullet spawn from under the space ship
         bullet.zPosition = 1
+        bullet.physicsBody = SKPhysicsBody(rectangleOf: bullet.size)
+        bullet.physicsBody!.affectedByGravity = false
+        bullet.physicsBody!.categoryBitMask = PhysicsCategories.Bullet
+        bullet.physicsBody!.collisionBitMask = PhysicsCategories.None
+        bullet.physicsBody?.contactTestBitMask = PhysicsCategories.Enemy
         // make the bullet with these attributes
         self.addChild(bullet)
         
@@ -118,6 +200,11 @@ class GameScene: SKScene {
         enemy.setScale(1)
         enemy.position = startPoint
         enemy.zPosition = 2
+        enemy.physicsBody = SKPhysicsBody(rectangleOf: enemy.size)
+        enemy.physicsBody!.affectedByGravity = false
+        enemy.physicsBody!.categoryBitMask = PhysicsCategories.Enemy
+        enemy.physicsBody!.collisionBitMask = PhysicsCategories.None
+        enemy.physicsBody!.contactTestBitMask = PhysicsCategories.Player | PhysicsCategories.Bullet
         self.addChild(enemy)
         
         // create the movement sequence
