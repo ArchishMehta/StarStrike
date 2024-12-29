@@ -14,6 +14,39 @@ class GameScene: SKScene {
     // declare the sound gloablay to avoid lag
     let bulletSound = SKAction.playSoundFileNamed("laser-shot-ingame-230500", waitForCompletion: false)
     
+    
+    // utility functions
+    // generate a random CGFloat between 0.0 and 1.0
+    func random() -> CGFloat {
+        return CGFloat.random(in: 0...1)
+    }
+
+    // generate a random CGFloat between a specified range
+    func random(min: CGFloat, max: CGFloat) -> CGFloat {
+        return CGFloat.random(in: min...max)
+    }
+    
+    
+    // creating the game area(the screen of an ipad is bigger than an iphone so some parts of the game may get cut off) to avoid that create a rectangle that will be the parameter of the ships to move and spawn
+    // do it globaly
+    var gameArea: CGRect
+    // scene initialzier
+    override init (size: CGSize) {
+        
+        let maxAspectRatio: CGFloat = 16.0/9.0
+        let playableWidth = size.height / maxAspectRatio
+        let margin = (size.width - playableWidth) / 2
+        gameArea = CGRect(x: margin, y: 0, width: playableWidth, height: size.height)
+        
+        super.init(size:size)
+        
+    }
+    // given by compiler
+    required init?(coder aDecoder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    
     // runs as soon as the scene loads up
     override func didMove(to view: SKView) {
         // create background
@@ -69,6 +102,58 @@ class GameScene: SKScene {
         bullet.run(bulletSequence)
     }
     
+    //function to spawn enemy
+    func spawnEnemy() {
+        // enemy gets spawned at a random x coordinate and ends at a random x coordinate
+        let randomXStart = random(min: CGRectGetMinX(gameArea), max: CGRectGetMaxX(gameArea))
+        let randomXEnd = random(min: CGRectGetMinX(gameArea), max: CGRectGetMaxX(gameArea))
+        
+        // where the enemy starts (random start and the y will be the top of the screen)
+        let startPoint = CGPoint(x: randomXStart, y: self.size.height * 1.2)
+        // where the enemy ends
+        let endPoint = CGPoint (x: randomXEnd, y: -self.size.height * 0.2)
+        
+        // creating the enemy
+        let enemy = SKSpriteNode(imageNamed: "enemyShip")
+        enemy.setScale(1)
+        enemy.position = startPoint
+        enemy.zPosition = 2
+        self.addChild(enemy)
+        
+        // create the movement sequence
+        // move to the endpoint in 1.5 seconds
+        let moveEnemy = SKAction.move(to: endPoint, duration: 1.5)
+        // delete the enemy when it reaches the end point
+        let deleteEnemy = SKAction.removeFromParent()
+        // the sequence for which it should follow
+        let enemySequence = SKAction.sequence([moveEnemy, deleteEnemy])
+        // run it
+        enemy.run(enemySequence)
+        
+        // delta x and y
+        let dx = endPoint.x - startPoint.x
+        let dy = endPoint.y - startPoint.y
+        // math to find the amount to rotate
+        let amountToRotate = atan2(dy, dx)
+        enemy.zRotation = amountToRotate
+    }
+    
+    // function to keep spawning enemies
+    func startNewLevel() {
+        let spawn = SKAction.run(spawnEnemy)
+        // how long it should wait before spawning a new enemy (wait one second before spawning)
+        let waitToSpawn = SKAction.wait(forDuration: 1)
+        // sequence to run it by(spawn a enemy and than wait)
+        let spawnSequence = SKAction.sequence([spawn, waitToSpawn])
+        // do it forever
+        let spawnForever = SKAction.repeatForever(spawnSequence)
+        // put that on the scene
+        self.run(spawnForever)
+        
+    }
+ 
+    
+    
     // function whenever screen is touched
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         // when screen is touched fire a bullet
@@ -89,6 +174,18 @@ class GameScene: SKScene {
             let amountDragged = pointOfTouch.x - previousPointOfTouch.x
             // move player by the amount dragged
             player.position.x += amountDragged
+            
+            // make sure the ship stays in game area by asking question
+            // gone too far to the right (if the player's x direction goes further than that of the game area)
+            if player.position.x > CGRectGetMaxX(gameArea) - player.size.width / 2 {
+                // push the player back to the game area max
+                player.position.x = CGRectGetMaxX(gameArea) - player.size.width / 2
+            }
+            // gone too far to the left
+            if player.position.x < CGRectGetMinX(gameArea) + player.size.width / 2  {
+                // push the player back to the game area min
+                player.position.x = CGRectGetMinX(gameArea) + player.size.width / 2
+            }
         }
     }
     
