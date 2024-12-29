@@ -9,8 +9,16 @@ import SpriteKit
 import GameplayKit
 
 class GameScene: SKScene, SKPhysicsContactDelegate {
+    // will keep track of the score(var is used when a variable value changes and let is used when value never changes)
+    var gameScore = 0
+    let scoreLabel = SKLabelNode(fontNamed: "The Bold Font")
     
+    // number of lives you start with
+    var livesNumber = 3
+    let livesLabel = SKLabelNode(fontNamed: "The Bold Font")
     
+    // will keep track of the level user is on
+    var levelNumber = 0
     
     // declare it up here to make it a global var
     let player = SKSpriteNode(imageNamed: "playerShip")
@@ -97,8 +105,52 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         player.physicsBody!.contactTestBitMask = PhysicsCategories.Enemy
         // make the player with all these attributes
         self.addChild(player)
+        
+        scoreLabel.text = "Score: 0"
+        scoreLabel.fontSize = 70
+        scoreLabel.fontColor = SKColor.white
+        scoreLabel.horizontalAlignmentMode = SKLabelHorizontalAlignmentMode.left
+        scoreLabel.position = CGPoint(x: self.size.width * 0.15, y: self.size.height * 0.9)
+        scoreLabel.zPosition = 100
+        self.addChild(scoreLabel)
+        
+        livesLabel.text = "Lives: 3"
+        livesLabel.fontSize = 70
+        livesLabel.fontColor = SKColor.white
+        livesLabel.horizontalAlignmentMode = SKLabelHorizontalAlignmentMode.right
+        livesLabel.position = CGPoint(x: self.size.width * 0.85, y: self.size.height * 0.9)
+        livesLabel.zPosition = 100
+        self.addChild(livesLabel)
 
     }
+    
+    // function to lose a life
+    func loseALife() {
+        // decrease the life by one and use an fstring to show it
+        livesNumber -= 1
+        livesLabel.text = "Lives: \(livesNumber)"
+        
+        let scaleUp = SKAction.scale(to: 1.5, duration: 0.2)
+        let scaleDown = SKAction.scale(to: 1, duration: 0.2)
+        let scaleSequence = SKAction.sequence([scaleUp,scaleDown])
+        livesLabel.run(scaleSequence)
+    }
+    
+    
+    // function to add the score
+    func addScore() {
+        // add 1 to score
+        gameScore += 1
+        // fstring
+        scoreLabel.text = "Score: \(gameScore)"
+        
+        // if score is 10 ,25, or 50 push to the next level
+        if gameScore == 10 || gameScore == 25 || gameScore == 50 {
+            startNewLevel()
+        }
+    }
+    
+    
     // function when two physic body make contact
     func didBegin(_ contact: SKPhysicsContact) {
         // variables needed to see how the contact between the bodies occurs
@@ -128,6 +180,9 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             body2.node?.removeFromParent()
         }
         if body2.categoryBitMask == PhysicsCategories.Bullet && body2.categoryBitMask == PhysicsCategories.Enemy && (body2.node?.position.y)! < self.size.height {
+            // add 1 to the score
+            addScore()
+            
             // if the bullet hit the enemy
             // delete the bullet and enemy
             // call the spawn explosion function and explode enemy ship
@@ -213,7 +268,8 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         // delete the enemy when it reaches the end point
         let deleteEnemy = SKAction.removeFromParent()
         // the sequence for which it should follow
-        let enemySequence = SKAction.sequence([moveEnemy, deleteEnemy])
+        let loseALifeAction = SKAction.run(loseALife)
+        let enemySequence = SKAction.sequence([moveEnemy, deleteEnemy, loseALifeAction])
         // run it
         enemy.run(enemySequence)
         
@@ -227,15 +283,34 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     
     // function to keep spawning enemies
     func startNewLevel() {
+        // increment the level
+        levelNumber += 1
+        if self.action(forKey: "spawningEnemies") != nil {
+            self.removeAction(forKey: "spawningEnemies")
+        }
+        
+        var levelDuration = TimeInterval()
+        
+        switch levelNumber {
+        case 1: levelDuration = 1.2
+        case 2: levelDuration = 1
+        case 3: levelDuration = 0.8
+        case 4: levelDuration = 0.5
+        default:
+            levelDuration = 0.4
+            print("Cannot find level info")
+        }
+        
+        
         let spawn = SKAction.run(spawnEnemy)
         // how long it should wait before spawning a new enemy (wait one second before spawning)
-        let waitToSpawn = SKAction.wait(forDuration: 1)
+        let waitToSpawn = SKAction.wait(forDuration: levelDuration)
         // sequence to run it by(spawn a enemy and than wait)
-        let spawnSequence = SKAction.sequence([spawn, waitToSpawn])
+        let spawnSequence = SKAction.sequence([spawn,waitToSpawn])
         // do it forever
         let spawnForever = SKAction.repeatForever(spawnSequence)
         // put that on the scene
-        self.run(spawnForever)
+        self.run(spawnForever, withKey: "spawningEnemies")
         
     }
  
