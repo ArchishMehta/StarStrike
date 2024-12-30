@@ -10,6 +10,7 @@ import SpriteKit
 
 // make this into a scene and name it
 class GameOverScene: SKScene {
+    
     let restartLabel = SKLabelNode(fontNamed: "The Bold Font")
     // as soon as we move to this scene
     override func didMove(to view: SKView) {
@@ -21,7 +22,7 @@ class GameOverScene: SKScene {
         
         let gameOverLabel = SKLabelNode(text: "The Bold Font")
         gameOverLabel.text = "GAME OVER"
-        gameOverLabel.fontSize = 2150
+        gameOverLabel.fontSize = 150
         gameOverLabel.fontColor = SKColor.white
         gameOverLabel.position = CGPoint(x: self.size.width * 0.5, y: self.size.height * 0.7)
         gameOverLabel.zPosition = 1
@@ -40,7 +41,7 @@ class GameOverScene: SKScene {
         var highScoreNumber = defaults.integer(forKey: "highScoreSaved")
         
         // if your game score is more than previous high score
-        if gameScore > highScoreNumber {
+        if (gameScore > highScoreNumber) {
             // update it so now thats your latest high score
             highScoreNumber = gameScore
             defaults.set(highScoreNumber, forKey: "highScoreSaved")
@@ -51,6 +52,7 @@ class GameOverScene: SKScene {
         highScoreLabel.fontSize = 100
         highScoreLabel.fontColor = SKColor.white
         highScoreLabel.position = CGPoint(x: self.size.width / 2, y: self.size.height * 0.45)
+        highScoreLabel.zPosition = 1
         self.addChild(highScoreLabel)
         
        
@@ -71,7 +73,7 @@ class GameOverScene: SKScene {
             let pointOfTouch = touch.location(in: self)
             // going to compare if pointOfTouch is equal to the restart button
             // if the restart label has the point of touch
-            if restartLabel.contains(pointOfTouch) {
+            if (restartLabel.contains(pointOfTouch)) {
                 //the size of the scene should be the size of the current scene
                 let sceneToMoveTo = GameScene(size: self.size)
                 sceneToMoveTo.scaleMode = self.scaleMode
