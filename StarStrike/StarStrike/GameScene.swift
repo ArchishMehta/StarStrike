@@ -200,7 +200,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         let fadeOutAction = SKAction.fadeOut(withDuration: 0.5)
         let deleteAction = SKAction.removeFromParent()
         let deleteSequence = SKAction.sequence([fadeOutAction, deleteAction])
-        tapToStartLabel.run(deleteAction)
+        tapToStartLabel.run(deleteSequence)
         let moveShipOntoScreenAction = SKAction.moveTo(y: self.size.height * 0.2, duration: 0.5)
         let startLevelAction = SKAction.run(startNewLevel)
         let startGameSequence = SKAction.sequence([moveShipOntoScreenAction, startLevelAction])
