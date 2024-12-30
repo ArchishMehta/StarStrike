@@ -7,11 +7,11 @@
 
 import SpriteKit
 import GameplayKit
+var gameScore = 0
 
 // will keep track of the score(var is used when a variable value changes and let is used when value never changes)
 // make it public so every other scene can use it
 
-var gameScore = 0
 class GameScene: SKScene, SKPhysicsContactDelegate {
    
     let scoreLabel = SKLabelNode(fontNamed: "The Bold Font")
@@ -48,9 +48,9 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     // structure for the different physics body
     struct PhysicsCategories {
         static let None: UInt32 = 0
-        static let Player: UInt32 = 0b1
-        static let Bullet: UInt32 = 0b10
-        static let Enemy : UInt32 = 0b100
+        static let Player: UInt32 = 0b1 // 1
+        static let Bullet: UInt32 = 0b10 // 2
+        static let Enemy : UInt32 = 0b100 // 4
     }
     
     // utility functions
@@ -136,7 +136,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         scoreLabel.fontSize = 50
         scoreLabel.fontColor = SKColor.white
         scoreLabel.horizontalAlignmentMode = SKLabelHorizontalAlignmentMode.left
-        scoreLabel.position = CGPoint(x: self.size.width * 0.15, y: self.size.height + scoreLabel.frame.size.height)
+        scoreLabel.position = CGPoint(x: self.size.width * 0.23, y: self.size.height + scoreLabel.frame.size.height)
         scoreLabel.zPosition = 100
         self.addChild(scoreLabel)
         
@@ -144,11 +144,11 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         livesLabel.fontSize = 50
         livesLabel.fontColor = SKColor.white
         livesLabel.horizontalAlignmentMode = SKLabelHorizontalAlignmentMode.right
-        livesLabel.position = CGPoint(x: self.size.width * 0.85, y: self.size.height + scoreLabel.frame.size.height)
+        livesLabel.position = CGPoint(x: self.size.width * 0.78, y: self.size.height + scoreLabel.frame.size.height)
         livesLabel.zPosition = 100
         self.addChild(livesLabel)
         
-        let moveOnToScreenAction = SKAction.moveTo(y: self.size.height * 0.9, duration: 0.3)
+        let moveOnToScreenAction = SKAction.moveTo(y: self.size.height * 0.75, duration: 0.3)
         scoreLabel.run(moveOnToScreenAction)
         livesLabel.run(moveOnToScreenAction)
         
@@ -160,19 +160,19 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         // relates to the transparency
         tapToStartLabel.alpha = 0
         self.addChild(tapToStartLabel)
+        
         let fadeInAction = SKAction.fadeIn(withDuration: 0.3)
         tapToStartLabel.run(fadeInAction)
-
     }
     
     var lastUpdateTime: TimeInterval = 0
     var deltaFrameTime: TimeInterval = 0
     // move down 600 each sec
     let amountToMovePerSecond: CGFloat = 600.0
+    
     // function to update the background
     override func update(_ currentTime: TimeInterval) {
-        
-        if lastUpdateTime == 0 {
+        if (lastUpdateTime) == 0 {
             lastUpdateTime = currentTime
         } else {
             deltaFrameTime = currentTime - lastUpdateTime
@@ -182,16 +182,15 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         
         self.enumerateChildNodes(withName: "Background") {
             background, stop in
-            if self.currentGameState == gameState.inGame {
+            if (self.currentGameState == gameState.inGame) {
                 background.position.y -= amountToMoveBackground
             }
             
-            if background.position.y < -self.size.height {
+            if (background.position.y < -self.size.height) {
                 background.position.y += self.size.height*2
             }
         }
     }
-    
     
     // function to move pregame state to ingame
     func startGame() {
@@ -201,6 +200,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         let deleteAction = SKAction.removeFromParent()
         let deleteSequence = SKAction.sequence([fadeOutAction, deleteAction])
         tapToStartLabel.run(deleteSequence)
+        
         let moveShipOntoScreenAction = SKAction.moveTo(y: self.size.height * 0.2, duration: 0.5)
         let startLevelAction = SKAction.run(startNewLevel)
         let startGameSequence = SKAction.sequence([moveShipOntoScreenAction, startLevelAction])
@@ -211,7 +211,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     func loseALife() {
         // decrease the life by one and use an fstring to show it
         livesNumber -= 1
-        livesLabel.text = "Lives: \(livesNumber)"
+        livesLabel.text = "LIVES: \(livesNumber)"
         
         let scaleUp = SKAction.scale(to: 1.5, duration: 0.2)
         let scaleDown = SKAction.scale(to: 1, duration: 0.2)
@@ -219,27 +219,24 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         livesLabel.run(scaleSequence)
         
         // if you reach 0 lives
-        if livesNumber == 0 {
+        if (livesNumber == 0) {
             // gameover
             runGameOver()
         }
     }
-    
     
     // function to add the score
     func addScore() {
         // add 1 to score
         gameScore += 1
         // fstring
-        scoreLabel.text = "Score: \(gameScore)"
+        scoreLabel.text = "SCORE: \(gameScore)"
         
         // if score is 10 ,25, or 50 push to the next level
-        if gameScore == 10 || gameScore == 25 || gameScore == 50 {
+        if (gameScore == 10 || gameScore == 25 || gameScore == 50) {
             startNewLevel()
         }
     }
-    
-    
     
     // function to run when the game ends
     func runGameOver() {
@@ -267,6 +264,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             // remove that action
             enemy.removeAllActions()
         }
+        // also need to free ability to fire more bullets
         let changeSceneAction = SKAction.run(changeScene)
         let waitToChangeScene = SKAction.wait(forDuration: 1)
         let changeSceneSequence = SKAction.sequence([waitToChangeScene, changeSceneAction])
@@ -293,7 +291,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         var body1 = SKPhysicsBody()
         var body2 = SKPhysicsBody()
         
-        if contact.bodyA.categoryBitMask < contact.bodyB.categoryBitMask {
+        if (contact.bodyA.categoryBitMask < contact.bodyB.categoryBitMask) {
             body1 = contact.bodyA
             body2 = contact.bodyB
         } else {
@@ -301,14 +299,14 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             body2 = contact.bodyA
         }
         
-        if body1.categoryBitMask == PhysicsCategories.Player && body2.categoryBitMask == PhysicsCategories.Enemy {
+        if (body1.categoryBitMask == PhysicsCategories.Player && body2.categoryBitMask == PhysicsCategories.Enemy) {
             // if the player has hit the enemy
             // delete player and enemey
             // call the spawn explosion function
-            if body1.node != nil {
+            if (body1.node != nil) {
                 spawnExplosion(spawnPosition: body1.node!.position)
             }
-            if body2.node != nil {
+            if (body2.node != nil) {
                 spawnExplosion(spawnPosition: body2.node!.position)
             }
             
@@ -318,14 +316,15 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             //game over
             runGameOver()
         }
-        if body2.categoryBitMask == PhysicsCategories.Bullet && body2.categoryBitMask == PhysicsCategories.Enemy && (body2.node?.position.y)! < self.size.height {
+        
+        if (body1.categoryBitMask == PhysicsCategories.Bullet && body2.categoryBitMask == PhysicsCategories.Enemy && (body2.node?.position.y)! < self.size.height) {
             // add 1 to the score
             addScore()
             
             // if the bullet hit the enemy
             // delete the bullet and enemy
             // call the spawn explosion function and explode enemy ship
-            if body2.node != nil {
+            if (body2.node != nil) {
                 spawnExplosion(spawnPosition: body2.node!.position)
             }
             body1.node?.removeFromParent()
@@ -345,8 +344,9 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         let scaleIn = SKAction.scale(to: 1, duration: 0.1)
         let fadeOut = SKAction.fadeOut(withDuration: 0.1)
         let delete = SKAction.removeFromParent()
+        
         let explosionSequence = SKAction.sequence([explosionSound, scaleIn, fadeOut, delete])
-        explosion.run(explosionSequence)
+        //explosion.run(explosionSequence)
     }
     
     
@@ -428,51 +428,50 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     
     // function to keep spawning enemies
     func startNewLevel() {
-        // increment the level
+        // Increment the level
         levelNumber += 1
-        if self.action(forKey: "spawningEnemies") != nil {
+        
+        // Remove any previous spawning action (if already running)
+        if (self.action(forKey: "spawningEnemies") != nil) {
             self.removeAction(forKey: "spawningEnemies")
         }
         
-        var levelDuration = TimeInterval()
+        // Set the level duration (spawn rate) based on the level
+        var levelDuration: TimeInterval
         
         switch levelNumber {
         case 1: levelDuration = 1.2
-        case 2: levelDuration = 1
+        case 2: levelDuration = 1.0
         case 3: levelDuration = 0.8
         case 4: levelDuration = 0.5
         default:
-            levelDuration = 0.4
+            levelDuration = 0.5
             print("Cannot find level info")
         }
         
-        
+        // create the spawn action
         let spawn = SKAction.run(spawnEnemy)
-        // how long it should wait before spawning a new enemy (wait one second before spawning)
+        // create the wait action based on the level duration
         let waitToSpawn = SKAction.wait(forDuration: levelDuration)
-        // sequence to run it by(spawn a enemy and than wait)
-        let spawnSequence = SKAction.sequence([spawn,waitToSpawn])
-        // do it forever
+        // create the sequence of actions (spawn and wait)
+        let spawnSequence = SKAction.sequence([waitToSpawn, spawn])
+        // run the sequence forever
         let spawnForever = SKAction.repeatForever(spawnSequence)
-        // put that on the scene
+        // run the spawning action with the key "spawningEnemies" so it can be managed
         self.run(spawnForever, withKey: "spawningEnemies")
-        
     }
- 
-    
-    
+
     // function whenever screen is touched
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         
         //if the current game start is before the game than trigger start of the game
-        if currentGameState == gameState.preGame {
+        if (currentGameState == gameState.preGame) {
             startGame()
         }
         // only fire a bullet when the game is active
-        else if currentGameState == gameState.inGame {
+        else if (currentGameState == gameState.inGame) {
             // when screen is touched fire a bullet
             fireBullet()
-            spawnEnemy()
         }
     }
     
@@ -489,21 +488,21 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             // amount that you moved
             let amountDragged = pointOfTouch.x - previousPointOfTouch.x
             // only if the game is active and being played
-            if currentGameState == gameState.inGame {
+            if (currentGameState == gameState.inGame) {
                 // move player by the amount dragged
                 player.position.x += amountDragged
             }
             
             // make sure the ship stays in game area by asking question
             // gone too far to the right (if the player's x direction goes further than that of the game area)
-            if player.position.x > CGRectGetMaxX(gameArea) - player.size.width / 2 {
+            if (player.position.x > gameArea.maxX - player.size.width / 2) {
                 // push the player back to the game area max
-                player.position.x = CGRectGetMaxX(gameArea) - player.size.width / 2
+                player.position.x = gameArea.maxX - player.size.width / 2
             }
             // gone too far to the left
-            if player.position.x < CGRectGetMinX(gameArea) + player.size.width / 2  {
+            if (player.position.x < gameArea.minX + player.size.width / 2)  {
                 // push the player back to the game area min
-                player.position.x = CGRectGetMinX(gameArea) + player.size.width / 2
+                player.position.x = gameArea.minX + player.size.width / 2
             }
         }
     }
