@@ -8,9 +8,12 @@
 import SpriteKit
 import GameplayKit
 
+// will keep track of the score(var is used when a variable value changes and let is used when value never changes)
+// make it public so every other scene can use it
+
+var gameScore = 0
 class GameScene: SKScene, SKPhysicsContactDelegate {
-    // will keep track of the score(var is used when a variable value changes and let is used when value never changes)
-    var gameScore = 0
+   
     let scoreLabel = SKLabelNode(fontNamed: "The Bold Font")
     
     // number of lives you start with
@@ -26,6 +29,19 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     let bulletSound = SKAction.playSoundFileNamed("laser-shot-ingame-230500", waitForCompletion: false)
     // delare the sound globally to avoid lag
     let explosionSound = SKAction.playSoundFileNamed("break-boom-fx-240235", waitForCompletion: false)
+    
+    // set up a data type to find what state of the game it's at(before,during, or end)
+    enum gameState {
+        // when the game state is before the start if the game
+        case preGame
+        // when the game state is during the game
+        case inGame
+        // when the game state is after the game
+        case afterGame
+    }
+    
+    // storing the state of the game
+    var currentGameState = gameState.inGame
     
     // structure for the different physics body
     struct PhysicsCategories {
@@ -69,6 +85,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     
     // runs as soon as the scene loads up
     override func didMove(to view: SKView) {
+        gameScore = 0
         
         self.physicsWorld.contactDelegate = self
         
@@ -134,6 +151,12 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         let scaleDown = SKAction.scale(to: 1, duration: 0.2)
         let scaleSequence = SKAction.sequence([scaleUp,scaleDown])
         livesLabel.run(scaleSequence)
+        
+        // if you reach 0 lives
+        if livesNumber == 0 {
+            // gameover
+            runGameOver()
+        }
     }
     
     
@@ -148,6 +171,53 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         if gameScore == 10 || gameScore == 25 || gameScore == 50 {
             startNewLevel()
         }
+    }
+    
+    
+    
+    // function to run when the game ends
+    func runGameOver() {
+        // when the game is over go to the end state
+        currentGameState = gameState.afterGame
+        
+        // when should this function run(added to didbegincontact and losealife)
+        // have to stop all actions before we can show the score
+        // stop spawning enemies
+        self.removeAllActions()
+        // stop spawning bullets
+        // generates a list of all actions with bullet on the scene
+        self.enumerateChildNodes(withName: "Bullet") {
+            // cycle through the list one at a time
+            bullet, stop in
+            // remove that action
+            bullet.removeAllActions()
+        }
+        
+        // stop spawning enemies
+        // generates a list of all actions with enemies on the scene
+        self.enumerateChildNodes(withName: "Enemy") {
+            // cycle through the list one at a time
+            enemy, stop in
+            // remove that action
+            enemy.removeAllActions()
+        }
+        let changeSceneAction = SKAction.run(changeScene)
+        let waitToChangeScene = SKAction.wait(forDuration: 1)
+        let changeSceneSequence = SKAction.sequence([waitToChangeScene, changeSceneAction])
+        self.run(changeSceneSequence)
+        
+    }
+    
+    // function to change to gameoverScene
+    func changeScene() {
+        // move to the gameoverScene and the size should be the size of the current scene
+        let sceneToMoveTo = GameOverScene(size: self.size)
+        // should also have the same scale
+        sceneToMoveTo.scaleMode = self.scaleMode
+        // transition into the new scene with fade of 0.5s
+        let myTransition = SKTransition.fade(withDuration: 0.5)
+        // take the current view and get rid of it and use the transition
+        self.view!.presentScene(sceneToMoveTo, transition: myTransition)
     }
     
     
@@ -178,6 +248,9 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             
             body1.node?.removeFromParent()
             body2.node?.removeFromParent()
+            
+            //game over
+            runGameOver()
         }
         if body2.categoryBitMask == PhysicsCategories.Bullet && body2.categoryBitMask == PhysicsCategories.Enemy && (body2.node?.position.y)! < self.size.height {
             // add 1 to the score
@@ -215,6 +288,8 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     func fireBullet() {
         // create variable "bullet" which holds the node(image called bullet)
         let bullet = SKSpriteNode(imageNamed: "bullet")
+        // give a referance name to call it outside without making it a global variable
+        bullet.name = "Bullet"
         // set the size of the bullet
         bullet.setScale(1)
         // make the bullet spawn where ever the ship is (change player to a global variable)
@@ -252,6 +327,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         
         // creating the enemy
         let enemy = SKSpriteNode(imageNamed: "enemyShip")
+        enemy.name = "Enemy"
         enemy.setScale(1)
         enemy.position = startPoint
         enemy.zPosition = 2
@@ -270,8 +346,11 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         // the sequence for which it should follow
         let loseALifeAction = SKAction.run(loseALife)
         let enemySequence = SKAction.sequence([moveEnemy, deleteEnemy, loseALifeAction])
-        // run it
-        enemy.run(enemySequence)
+        // saftey
+        if currentGameState == gameState.inGame {
+            // run it
+            enemy.run(enemySequence)
+        }
         
         // delta x and y
         let dx = endPoint.x - startPoint.x
@@ -318,8 +397,11 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     
     // function whenever screen is touched
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        // when screen is touched fire a bullet
-        fireBullet()
+        // only fire a bullet when the game is active
+        if currentGameState == gameState.inGame {
+            // when screen is touched fire a bullet
+            fireBullet()
+        }
     }
     
     
@@ -334,8 +416,11 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             
             // amount that you moved
             let amountDragged = pointOfTouch.x - previousPointOfTouch.x
-            // move player by the amount dragged
-            player.position.x += amountDragged
+            // only if the game is active and being played
+            if currentGameState == gameState.inGame {
+                // move player by the amount dragged
+                player.position.x += amountDragged
+            }
             
             // make sure the ship stays in game area by asking question
             // gone too far to the right (if the player's x direction goes further than that of the game area)
